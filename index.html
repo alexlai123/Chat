@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        .name-section {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+        }
+
+        .chat-area {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+        }
+
+        .message.sent {
+            background: #e3f2fd;
+            margin-left: 20%;
+        }
+
+        .message.received {
+            background: #f5f5f5;
+            margin-right: 20%;
+        }
+
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex-grow: 1;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1565c0;
+        }
+
+        .connection-info {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="name-section">
+            <label for="username">Your Name: </label>
+            <input type="text" id="username" placeholder="Enter your name">
+            <button onclick="updateUsername()">Update Name</button>
+        </div>
+
+        <div class="chat-area" id="chatArea"></div>
+
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Type your message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+
+        <div class="connection-info">
+            <p>Your Connection ID: <span id="connectionId"></span></p>
+            <input type="text" id="peerConnectionId" placeholder="Enter peer's connection ID">
+            <button onclick="connectToPeer()">Connect to Peer</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize username from localStorage or set default
+        let username = localStorage.getItem('username') || 'Anonymous';
+        document.getElementById('username').value = username;
+
+        // Message storage structure
+        const messageStore = {
+            messages: [],
+            
+            // Add a new message
+            addMessage(message) {
+                this.messages.push({
+                    ...message,
+                    timestamp: new Date().toISOString()
+                });
+                this.saveToLocalStorage();
+                this.displayMessages();
+            },
+
+            // Save messages to localStorage with timestamp
+            saveToLocalStorage() {
+                localStorage.setItem('chatMessages', JSON.stringify({
+                    messages: this.messages,
+                    savedAt: new Date().toISOString()
+                }));
+            },
+
+            // Load messages from localStorage
+            loadFromLocalStorage() {
+                const stored = localStorage.getItem('chatMessages');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    const savedAt = new Date(data.savedAt);
+                    const now = new Date();
+                    
+                    // Check if 24 hours have passed
+                    if ((now - savedAt) > (24 * 60 * 60 * 1000)) {
+                        localStorage.removeItem('chatMessages');
+                        this.messages = [];
+                    } else {
+                        this.messages = data.messages;
+                    }
+                }
+                this.displayMessages();
+            },
+
+            // Display messages in the chat area
+            displayMessages() {
+                const chatArea = document.getElementById('chatArea');
+                chatArea.innerHTML = '';
+                
+                this.messages.forEach(msg => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${msg.type}`;
+                    
+                    const time = new Date(msg.timestamp).toLocaleTimeString();
+                    messageDiv.innerHTML = `
+                        <strong>${msg.username}:</strong> ${msg.text}
+                        <div class="timestamp">${time}</div>
+                    `;
+                    
+                    chatArea.appendChild(messageDiv);
+                });
+                
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+        };
+
+        // Update username
+        function updateUsername() {
+            const newUsername = document.getElementById('username').value.trim();
+            if (newUsername) {
+                username = newUsername;
+                localStorage.setItem('username', username);
+            }
+        }
+
+        // Send message function
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const text = messageInput.value.trim();
+            
+            if (text) {
+                // Add message to local storage
+                messageStore.addMessage({
+                    username: username,
+                    text: text,
+                    type: 'sent'
+                });
+
+                // Simulate receiving a message (in real P2P, this would be handled by WebRTC)
+                setTimeout(() => {
+                    messageStore.addMessage({
+                        username: 'Peer',
+                        text: `Reply to: ${text}`,
+                        type: 'received'
+                    });
+                }, 1000);
+
+                messageInput.value = '';
+            }
+        }
+
+        // Handle Enter key in message input
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Initialize chat
+        messageStore.loadFromLocalStorage();
+
+        // Simulate P2P connection (in real implementation, this would use WebRTC)
+        const connectionId = Math.random().toString(36).substr(2, 9);
+        document.getElementById('connectionId').textContent = connectionId;
+
+        function connectToPeer() {
+            const peerId = document.getElementById('peerConnectionId').value;
+            if (peerId) {
+                alert(`Connecting to peer ${peerId}... (Simulation only)`);
+            }
+        }
+
+        // Check and clean old messages every hour
+        setInterval(() => {
+            messageStore.loadFromLocalStorage();
+        }, 3600000); // 1 hour in milliseconds
+    </script>
+</body>
+</html>
